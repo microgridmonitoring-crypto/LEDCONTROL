@@ -19,34 +19,26 @@
     <div id="status">Authenticating...</div>
 
     <script type="module">
+        // FIXED: Consolidated into a single set of matching Firebase SDK imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-       
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAni5pmTKQb4omKBP3ohS8LdIJ7nelv--c",
+            authDomain: "led-f92a7.firebaseapp.com",
+            databaseURL: "https://led-f92a7-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "led-f92a7",
+            storageBucket: "led-f92a7.firebasestorage.app",
+            messagingSenderId: "234514052081",
+            appId: "1:234514052081:web:401a2c946b4538b34dca50",
+            measurementId: "G-M4RPVET8FM"
+        };
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyAni5pmTKQb4omKBP3ohS8LdIJ7nelv--c",
-    authDomain: "led-f92a7.firebaseapp.com",
-    databaseURL: "https://led-f92a7-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "led-f92a7",
-    storageBucket: "led-f92a7.firebasestorage.app",
-    messagingSenderId: "234514052081",
-    appId: "1:234514052081:web:401a2c946b4538b34dca50",
-    measurementId: "G-M4RPVET8FM"
-  };
-
-  // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      const analytics = getAnalytics(app);
-            
+        // Initialize Firebase app instance
+        const app = initializeApp(firebaseConfig);
+                
         const db = getDatabase(app);
         const auth = getAuth(app);
         
@@ -55,6 +47,7 @@
         const statusDiv = document.getElementById('status');
         let currentState = 0;
 
+        // Perform anonymous authorization handshake
         signInAnonymously(auth).then(() => {
             btn.removeAttribute('disabled');
             
@@ -73,6 +66,9 @@
                     statusDiv.style.color = "#e71d36";
                 }
             });
+        }).catch((err) => {
+            console.error("Auth Failure Error Logs:", err);
+            statusDiv.innerText = "Authentication Error!";
         });
 
         // Write pure integers to Firebase on click execution
