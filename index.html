@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32-S3 Cloud Control</title>
+    <title>ESP32-S3 Secure Cloud Control</title>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background-color: #f4f4f9; }
         .btn { padding: 15px 30px; font-size: 18px; cursor: pointer; border: none; border-radius: 5px; color: white; font-weight: bold; transition: background 0.2s; }
@@ -15,19 +15,18 @@
 <body>
 
     <h2>ESP32-S3 Output Control Dashboard</h2>
-    <button id="ctrlBtn" class="btn off">Turn ON</button>
-    <div id="status">Current State: Loading...</div>
+    <button id="ctrlBtn" class="btn off" disabled>Connecting...</button>
+    <div id="status">Authenticating...</div>
 
     <script type="module">
-        // FIXED: Imported the core database module alongside the required functions (ref, set, onValue, getDatabase)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        // IMPORT: Added the Firebase Authentication modules
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        // Your web app's Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyAni5pmTKQb4omKBP3ohS8LdIJ7nelv--c",
             authDomain: "led-f92a7.firebaseapp.com",
-            // FIXED: Added the required regional database URL link
             databaseURL: "https://led-f92a7-default-rtdb.asia-southeast1.firebasedatabase.app/",
             projectId: "led-f92a7",
             storageBucket: "led-f92a7.firebasestorage.app",
@@ -35,34 +34,44 @@
             appId: "1:234514052081:web:401a2c946b4538b34dca50"
         };
 
-        // Initialize Firebase
+        // Initialize Firebase instances
         const app = initializeApp(firebaseConfig);
-        
-        // FIXED: Explicitly initialized the Realtime Database reference object 'db'
         const db = getDatabase(app);
+        const auth = getAuth(app);
+        
         const statusRef = ref(db, 'led_status');
-
         const btn = document.getElementById('ctrlBtn');
         const statusDiv = document.getElementById('status');
         let currentState = 0;
 
-        // Listen for live updates from Firebase to change UI state instantly
-        onValue(statusRef, (snapshot) => {
-            // Handle cases where the path doesn't exist yet by defaulting to 0
-            currentState = snapshot.exists() ? snapshot.val() : 0; 
-            
-            if (currentState === 1) {
-                btn.innerText = "Turn OFF";
-                btn.className = "btn off";
-                statusDiv.innerText = "Current State: ON";
-                statusDiv.style.color = "#2ec4b6";
-            } else {
-                btn.innerText = "Turn ON";
-                btn.className = "btn on";
-                statusDiv.innerText = "Current State: OFF";
+        // Perform the Anonymous Login
+        signInAnonymously(auth)
+            .then(() => {
+                console.log("Logged in anonymously successfully!");
+                btn.removeAttribute('disabled'); // Enable button once authenticated
+                
+                // Start listening to the database changes only AFTER successful login
+                onValue(statusRef, (snapshot) => {
+                    currentState = snapshot.exists() ? snapshot.val() : 0; 
+                    
+                    if (currentState === 1) {
+                        btn.innerText = "Turn OFF";
+                        btn.className = "btn off";
+                        statusDiv.innerText = "Current State: ON";
+                        statusDiv.style.color = "#2ec4b6";
+                    } else {
+                        btn.innerText = "Turn ON";
+                        btn.className = "btn on";
+                        statusDiv.innerText = "Current State: OFF";
+                        statusDiv.style.color = "#e71d36";
+                    }
+                });
+            })
+            .catch((error) => {
+                console.error("Authentication failed:", error);
+                statusDiv.innerText = "Authentication Error!";
                 statusDiv.style.color = "#e71d36";
-            }
-        });
+            });
 
         // Toggle state in database on button click
         btn.addEventListener('click', () => {
