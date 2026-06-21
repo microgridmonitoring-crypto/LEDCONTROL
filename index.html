@@ -3,70 +3,501 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud LED Control</title>
+    <title>Microgrid IoT Digital Twin Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; margin-top: 80px; background-color: #f4f4f9; }
-        .btn { padding: 20px 40px; font-size: 20px; cursor: pointer; border: none; border-radius: 8px; color: white; font-weight: bold; transition: 0.2s; }
-        .on { background-color: #2ec4b6; }
-        .off { background-color: #e71d36; }
-        #status { margin-top: 25px; font-size: 22px; font-weight: bold; }
+        .custom-glow {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+        }
+        .canvas-container canvas {
+            border-radius: 0.75rem;
+        }
     </style>
 </head>
-<body>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen selection:bg-blue-600 selection:text-white">
 
-    <h2>IoT Web Control Dashboard</h2>
-    <button id="ctrlBtn" class="btn off" disabled>Connecting to Cloud...</button>
-    <div id="status">Syncing with Firebase...</div>
+    <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50 px-6 py-4 flex flex-wrap justify-between items-center gap-4">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 p-2.5 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.5)]">
+                <i class="fa-solid fa-circle-nodes text-xl text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-blue-400 bg-clip-text text-transparent">MICROGRID TWIN ENGINE</h1>
+                <p class="text-xs text-slate-400">ESP32-S3 N16R8 Edge Processing | Bidirectional Energy Management System</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/50 text-xs">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                <span class="text-slate-300 font-medium">Firebase: Connected</span>
+            </div>
+            <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/50 text-xs">
+                <i class="fa-brands fa-github text-slate-400"></i>
+                <span class="text-slate-300 font-medium">GitHub: Synchronized</span>
+            </div>
+        </div>
+    </header>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    <main class="p-6 grid grid-cols-1 xl:grid-cols-12 gap-6 max-w-[1600px] mx-auto">
+        
+        <div class="xl:col-span-5 flex flex-col gap-6">
+            
+            <section class="grid grid-cols-3 gap-4">
+                <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl custom-glow">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-semibold text-amber-400 tracking-wider uppercase">Solar Panel</span>
+                        <i class="fa-solid fa-solar-panel text-amber-400 text-sm"></i>
+                    </div>
+                    <div class="text-2xl font-bold" id="ui-solar-power">0.0 W</div>
+                    <div class="text-xs text-slate-400 mt-1" id="ui-solar-details">0.0V | 0.0A</div>
+                    <div class="text-[10px] text-slate-500 mt-2">Max Rating: 60W</div>
+                </div>
 
-        // Your verified Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyAni5pmTKQb4omKBP3ohS8LdIJ7nelv--c",
-            authDomain: "led-f92a7.firebaseapp.com",
-            databaseURL: "https://led-f92a7-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "led-f92a7",
-            storageBucket: "led-f92a7.firebasestorage.app",
-            messagingSenderId: "234514052081",
-            appId: "1:234514052081:web:401a2c946b4538b34dca50",
-            measurementId: "G-M4RPVET8FM"
+                <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl custom-glow">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-semibold text-emerald-400 tracking-wider uppercase">Battery Pack</span>
+                        <i class="fa-solid fa-battery-three-quarters text-emerald-400 text-sm" id="ui-battery-icon"></i>
+                    </div>
+                    <div class="text-2xl font-bold" id="ui-battery-soc">0%</div>
+                    <div class="text-xs text-slate-400 mt-1" id="ui-battery-details">0.0V | 0.0A</div>
+                    <div class="text-[10px] text-slate-500 mt-2">Capacity: 12V 7Ah</div>
+                </div>
+
+                <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl custom-glow">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-semibold text-blue-400 tracking-wider uppercase">Grid Load</span>
+                        <i class="fa-solid fa-bolt text-blue-400 text-sm"></i>
+                    </div>
+                    <div class="text-2xl font-bold" id="ui-load-power">0.0 W</div>
+                    <div class="text-xs text-slate-400 mt-1" id="ui-load-details">12.0V | 0.0A</div>
+                    <div class="text-[10px] text-slate-500 mt-2">Constant 12V Bus</div>
+                </div>
+            </section>
+
+            <section class="bg-slate-900/80 border border-slate-800 p-5 rounded-xl">
+                <h3 class="text-sm font-bold tracking-wide text-slate-300 uppercase mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-toggle-on text-blue-500"></i> ESP32-S3 Physical Relay Array
+                </h3>
+                <div class="grid grid-cols-2 gap-4 text-xs">
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 flex justify-between items-center">
+                        <div>
+                            <p class="font-semibold text-slate-300">Relay 1: Solar to Load</p>
+                            <span class="text-[10px] text-slate-500">Direct generation path</span>
+                        </div>
+                        <span id="relay-solar-load" class="px-2.5 py-1 rounded font-bold uppercase transition-all duration-300 bg-slate-800 text-slate-400">OFF</span>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 flex justify-between items-center">
+                        <div>
+                            <p class="font-semibold text-slate-300">Relay 2: Battery to Load</p>
+                            <span class="text-[10px] text-slate-500">Storage discharge path</span>
+                        </div>
+                        <span id="relay-battery-load" class="px-2.5 py-1 rounded font-bold uppercase transition-all duration-300 bg-slate-800 text-slate-400">OFF</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="bg-slate-900/80 border border-slate-800 p-5 rounded-xl">
+                <h3 class="text-sm font-bold tracking-wide text-slate-300 uppercase mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-purple-500"></i> Environment Simulation Inputs
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between text-xs font-medium text-slate-400 mb-1">
+                            <span>Solar Generation Input (Irradiance)</span>
+                            <span id="sim-solar-val" class="text-amber-400 font-bold">35 W</span>
+                        </div>
+                        <input type="range" id="slider-solar" min="0" max="60" value="35" class="w-full accent-amber-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs font-medium text-slate-400 mb-1">
+                            <span>Target Grid Load Demand</span>
+                            <span id="sim-load-val" class="text-blue-400 font-bold">25 W</span>
+                        </div>
+                        <input type="range" id="slider-load" min="0" max="55" value="25" class="w-full accent-blue-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs font-medium text-slate-400 mb-1">
+                            <span>Battery Initial Charge (State of Charge)</span>
+                            <span id="sim-battery-val" class="text-emerald-400 font-bold">75 %</span>
+                        </div>
+                        <input type="range" id="slider-battery" min="10" max="100" value="75" class="w-full accent-emerald-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </div>
+            </section>
+
+            <section class="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden flex-1 flex flex-col">
+                <div class="flex border-b border-slate-800 bg-slate-950">
+                    <button id="btn-tab-ifelse" onclick="switchStrategy('ifelse')" class="flex-1 py-3 text-center text-xs font-bold uppercase tracking-wider border-b-2 border-purple-500 bg-slate-900 text-slate-200 transition-all">
+                        <i class="fa-solid fa-code-branch mr-1 text-purple-500"></i> Static If-Else Scenario
+                    </button>
+                    <button id="btn-tab-truetwin" onclick="switchStrategy('truetwin')" class="flex-1 py-3 text-center text-xs font-bold uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-slate-300 transition-all">
+                        <i class="fa-solid fa-brain mr-1 text-blue-500"></i> True Digital Twin
+                    </button>
+                </div>
+
+                <div class="p-5 flex-1 flex flex-col justify-between text-xs space-y-4">
+                    <div id="panel-ifelse" class="space-y-3">
+                        <div class="p-3 bg-purple-950/20 border border-purple-900/40 rounded-lg text-purple-300">
+                            <strong>Reactive Automation Architecture:</strong> Standard automation evaluating raw instantaneous variables sequentially. It lacks capacity look-aheads, component health context, or telemetry-driven load speed adjustments.
+                        </div>
+                        <div class="font-mono bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1 text-[11px] text-slate-400">
+                            <p><span class="text-purple-400">if</span> (solar_watts >= load_watts) {</p>
+                            <p class="pl-4 text-emerald-500">relay_solar = ON; relay_battery = OFF;</p>
+                            <p><span class="text-purple-400">} else if</span> (battery_voltage > 11.8V) {</p>
+                            <p class="pl-4 text-emerald-500">relay_solar = OFF; relay_battery = ON;</p>
+                            <p><span class="text-purple-400">} else</span> { <span class="text-red-400">System Shutdown / Shedding</span> }</p>
+                        </div>
+                        <div class="flex items-center gap-2 text-slate-400">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+                            <span>Disadvantage: Causes rapid relay oscillations during variable solar cloud cover.</span>
+                        </div>
+                    </div>
+
+                    <div id="panel-truetwin" class="hidden space-y-3">
+                        <div class="p-3 bg-blue-950/20 border border-blue-900/40 rounded-lg text-blue-300">
+                            <strong>Bidirectional Analytical Model:</strong> Calculates internal component states dynamically. Predicts operational runtime, evaluates battery health indices, and adjusts the 3D visual animation twin speed to match actual load current.
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                                <span class="text-slate-500 block text-[10px] uppercase">State of Health (SoH)</span>
+                                <span class="text-sm font-bold text-slate-200">98.4% (Optimal)</span>
+                            </div>
+                            <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                                <span class="text-slate-500 block text-[10px] uppercase">Est. System Autonomy</span>
+                                <span id="twin-runtime" class="text-sm font-bold text-blue-400">Calculating...</span>
+                            </div>
+                            <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 col-span-2">
+                                <span class="text-slate-500 block text-[10px] uppercase">Mathematical Engine Equation</span>
+                                <span class="text-[11px] font-mono text-emerald-400">P_net = P_solar - P_load | SoC(t) = SoC(0) + ∫(I_bat/Cap)dt</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-800">
+                        <div class="flex justify-between items-center bg-slate-950 p-3 rounded-lg border border-slate-800">
+                            <div>
+                                <span class="text-[10px] text-slate-500 block uppercase font-bold tracking-wider">Strategy Execution Event Log</span>
+                                <span id="strategy-log" class="text-slate-300 font-medium">Initializing Twin core loops...</span>
+                            </div>
+                            <i id="strategy-icon" class="fa-solid fa-microchip text-slate-400 text-base"></i>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="xl:col-span-7 flex flex-col gap-4 min-h-[500px] xl:min-h-0">
+            <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl flex-1 flex flex-col relative">
+                <div class="absolute top-6 left-6 z-10 bg-slate-950/80 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-800 text-xs flex flex-col gap-0.5 pointer-events-none">
+                    <span class="font-bold text-slate-200 tracking-wide uppercase flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping"></span>
+                        Real-Time 3D Digital Twin View
+                    </span>
+                    <span id="3d-fan-speed" class="text-slate-400 text-[10px]">Fan Clip Rotation Speed: 0.00x</span>
+                </div>
+
+                <div class="absolute bottom-6 right-6 tyranny z-10 bg-slate-950/80 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-800 text-xs flex items-center gap-3 text-slate-400 pointer-events-none">
+                    <div><i class="fa-solid fa-mouse mr-1 text-slate-500"></i> Left Click + Drag: Rotate</div>
+                    <div><i class="fa-solid fa-scroll mr-1 text-slate-500"></i> Scroll: Zoom</div>
+                </div>
+                
+                <div id="loader-fallback" class="absolute inset-0 flex flex-col justify-center items-center bg-slate-950 rounded-lg z-20 transition-opacity duration-500 text-xs gap-3">
+                    <i class="fa-solid fa-circle-notch text-blue-500 text-3xl animate-spin"></i>
+                    <p class="text-slate-400 font-medium tracking-widest uppercase">Parsing microgrid.glb Asset...</p>
+                </div>
+
+                <div id="three-canvas-viewport" class="w-full flex-1 canvas-container min-h-[450px]"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- System State Data Initialization Struct ---
+        let currentStrategy = 'ifelse';
+        const state = {
+            solarPower: 35,
+            loadDemand: 25,
+            batterySoc: 75,
+            batteryVoltage: 12.4,
+            batteryCurrent: 0,
+            relaySolarToLoad: false,
+            relayBatteryToLoad: false
         };
 
-        // Initialize Firebase app instance
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        
-        const statusRef = ref(db, 'led_status');
-        const btn = document.getElementById('ctrlBtn');
-        const statusDiv = document.getElementById('status');
-        let currentState = 0;
+        // --- Three.js Global Variable Definitions ---
+        let scene, camera, renderer, controls, mixer, fanAction;
+        let clock = new THREE.Clock();
 
-        // Automatically activate button since public access rules are verified
-        btn.removeAttribute('disabled');
-        
-        // Listen for live database updates to synchronize the webpage UI layout
-        onValue(statusRef, (snapshot) => {
-            currentState = snapshot.exists() ? snapshot.val() : 0; 
-            if (currentState === 1) {
-                btn.innerText = "Turn OFF";
-                btn.className = "btn off";
-                statusDiv.innerText = "Current Hardware State: ON";
-                statusDiv.style.color = "#2ec4b6";
+        // Initialize UI Elements listeners and values immediately
+        document.addEventListener("DOMContentLoaded", () => {
+            initThreeJS();
+            setupSimulationControls();
+            runSystemEngineLoop();
+            
+            // Periodically refresh processing loop every 1 second
+            setInterval(runSystemEngineLoop, 1000);
+        });
+
+        // --- Setup ThreeJS Simulation Space ---
+        function initThreeJS() {
+            const container = document.getElementById('three-canvas-viewport');
+            
+            // 1. Create Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x020617); // Match Tailwind slate-950
+
+            // 2. Setup Camera
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(300, 200, 300);
+
+            // 3. Setup Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // 4. Setup Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.05; // Prevent camera clipping below floor plane
+
+            // 5. Lighting Setup
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(150, 300, 100);
+            scene.add(dirLight);
+
+            const blueGlowLight = new THREE.PointLight(0x3b82f6, 1, 200);
+            blueGlowLight.position.set(0, 50, 0);
+            scene.add(blueGlowLight);
+
+            // Add Ground Grid
+            const gridHelper = new THREE.GridHelper(500, 50, 0x1e293b, 0x0f172a);
+            gridHelper.position.y = -50;
+            scene.add(gridHelper);
+
+            // 6. Load user asset microgrid.glb 
+            const loader = new THREE.GLTFLoader();
+            loader.load('microgrid.glb', 
+                (gltf) => {
+                    const model = gltf.scene;
+                    
+                    // Automatically auto-center and balance model scaling inside the scene viewport bounds
+                    const box = new THREE.Box3().setFromObject(model);
+                    const center = box.getCenter(new THREE.Vector3());
+                    model.position.sub(center); 
+                    model.position.y += 10; // offset off grid slightly
+                    
+                    scene.add(model);
+                    
+                    // Setup internal gltf key animations
+                    mixer = new THREE.AnimationMixer(model);
+                    const clip = gltf.animations.find(anim => anim.name === 'Ventilador|VentiladorAction');
+                    if (clip) {
+                        fanAction = mixer.clipAction(clip);
+                        fanAction.play();
+                        fanAction.timeScale = 0; // Initialize stopped
+                    }
+
+                    // Hide Loading Fallback
+                    document.getElementById('loader-fallback').classList.add('opacity-0');
+                    setTimeout(() => document.getElementById('loader-fallback').remove(), 500);
+
+                    animate();
+                },
+                (xhr) => {
+                    // Progress metric parsing can track here if needed
+                },
+                (error) => {
+                    console.error('An error happened while loading microgrid.glb asset: ', error);
+                    const fallbackMsg = document.getElementById('loader-fallback');
+                    fallbackMsg.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-red-500 text-2xl"></i>
+                                             <p class="text-red-400 font-bold uppercase">Asset Initialization Error</p>
+                                             <p class="text-slate-500 text-center px-4">Ensure microgrid.glb file is positioned directly in the same folder path directory</p>`;
+                }
+            );
+
+            // Window resizing handling
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('three-canvas-viewport');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        // --- Core Application Execution Frame Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            if (mixer) mixer.update(delta);
+            
+            if (controls) controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- Strategy System Toggle Handling Matrix ---
+        function switchStrategy(type) {
+            currentStrategy = type;
+            const btnIfElse = document.getElementById('btn-tab-ifelse');
+            const btnTrueTwin = document.getElementById('btn-tab-truetwin');
+            const panelIfElse = document.getElementById('panel-ifelse');
+            const panelTrueTwin = document.getElementById('panel-truetwin');
+
+            if (type === 'ifelse') {
+                btnIfElse.className = "flex-1 py-3 text-center text-xs font-bold uppercase tracking-wider border-b-2 border-purple-500 bg-slate-900 text-slate-200 transition-all";
+                btnTrueTwin.className = "flex-1 py-3 text-center text-xs font-bold uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-slate-300 transition-all";
+                panelIfElse.classList.remove('hidden');
+                panelTrueTwin.classList.add('hidden');
             } else {
-                btn.innerText = "Turn ON";
-                btn.className = "btn on";
-                statusDiv.innerText = "Current Hardware State: OFF";
-                statusDiv.style.color = "#e71d36";
+                btnIfElse.className = "flex-1 py-3 text-center text-xs font-bold uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-slate-300 transition-all";
+                btnTrueTwin.className = "flex-1 py-3 text-center text-xs font-bold uppercase tracking-wider border-b-2 border-blue-500 bg-slate-900 text-slate-200 transition-all";
+                panelIfElse.classList.add('hidden');
+                panelTrueTwin.classList.remove('hidden');
             }
-        });
+            runSystemEngineLoop();
+        }
 
-        // Write raw integer states to Firebase without quotation marks
-        btn.addEventListener('click', () => {
-            const nextState = currentState === 1 ? 0 : 1;
-            set(statusRef, nextState);
-        });
+        // --- Setup Simulator Controls Links ---
+        function setupSimulationControls() {
+            const bindSlider = (sliderId, valId, stateKey, suffix) => {
+                const el = document.getElementById(sliderId);
+                el.addEventListener('input', (e) => {
+                    state[stateKey] = parseFloat(e.target.value);
+                    document.getElementById(valId).innerText = `${e.target.value} ${suffix}`;
+                    runSystemEngineLoop();
+                });
+            };
+
+            bindSlider('slider-solar', 'sim-solar-val', 'solarPower', 'W');
+            bindSlider('slider-load', 'sim-load-val', 'loadDemand', 'W');
+            bindSlider('slider-battery', 'sim-battery-val', 'batterySoc', '%');
+        }
+
+        // --- Core Mathematical and Logical Processor ---
+        function runSystemEngineLoop() {
+            // Dynamic simple physical proxy calculations based on inputs
+            state.batteryVoltage = parseFloat((11.5 + (state.batterySoc / 100) * 1.5).toFixed(2));
+            
+            const logEl = document.getElementById('strategy-log');
+            const iconEl = document.getElementById('strategy-icon');
+
+            // --- STRATEGY SCENARIO 1: REACTIVE AUTOMATION (IF-ELSE) ---
+            if (currentStrategy === 'ifelse') {
+                iconEl.className = "fa-solid fa-code-branch text-purple-500 text-base animate-none";
+                
+                if (state.solarPower >= state.loadDemand && state.solarPower > 0) {
+                    state.relaySolarToLoad = true;
+                    state.relayBatteryToLoad = false;
+                    state.batteryCurrent = parseFloat(((state.solarPower - state.loadDemand) / state.batteryVoltage).toFixed(2)); // charge surplus
+                    logEl.innerText = "IF condition met: Running directly from Solar. Battery charging.";
+                } else if (state.batteryVoltage > 11.8) {
+                    state.relaySolarToLoad = false;
+                    state.relayBatteryToLoad = true;
+                    state.batteryCurrent = -parseFloat((state.loadDemand / state.batteryVoltage).toFixed(2)); // discharge
+                    logEl.innerText = "ELSE IF met: Insufficient solar. Discharging battery storage.";
+                } else {
+                    state.relaySolarToLoad = false;
+                    state.relayBatteryToLoad = false;
+                    state.batteryCurrent = 0;
+                    logEl.innerText = "CRITICAL ELSE: Depleted reserves. Powering down system loads!";
+                }
+
+                // In standard static systems, the 3D visual component is typically treated binary (full speed or stopped)
+                if (fanAction) {
+                    fanAction.timeScale = (state.relaySolarToLoad || state.relayBatteryToLoad) ? 1.0 : 0.0;
+                }
+            } 
+            // --- STRATEGY SCENARIO 2: TRUE DIGITAL TWIN (PREDICTIVE COGNITION) ---
+            else {
+                iconEl.className = "fa-solid fa-brain text-blue-500 text-base animate-pulse";
+                
+                // Advanced analytical calculations inside the Virtual Twin model
+                const netPower = state.solarPower - state.loadDemand;
+                const batteryWhCapacity = 12 * 7; // 12V 7Ah = 84 Watt-hours capacity total
+                const currentStoredWh = (state.batterySoc / 100) * batteryWhCapacity;
+
+                if (netPower >= 0) {
+                    state.relaySolarToLoad = true;
+                    state.relayBatteryToLoad = false;
+                    state.batteryCurrent = parseFloat((netPower / state.batteryVoltage).toFixed(2));
+                    
+                    const timeToFull = netPower > 0 ? ((batteryWhCapacity - currentStoredWh) / netPower).toFixed(1) : 0;
+                    document.getElementById('twin-runtime').innerText = netPower > 0 ? `Full charge in ${timeToFull}h` : 'Balanced Matrix';
+                    logEl.innerText = `Twin Optimization: Direct distribution path active. Net surplus: +${netPower}W.`;
+                } else {
+                    // True Twin intelligent load splitting (combines paths simultaneously if needed)
+                    state.relaySolarToLoad = state.solarPower > 0;
+                    state.relayBatteryToLoad = true;
+                    
+                    const actualDeficit = Math.abs(netPower);
+                    state.batteryCurrent = -parseFloat((actualDeficit / state.batteryVoltage).toFixed(2));
+                    
+                    const hoursLeft = (currentStoredWh / actualDeficit).toFixed(1);
+                    document.getElementById('twin-runtime').innerText = `${hoursLeft} hours remaining`;
+                    logEl.innerText = `Twin Optimization: Parallel distribution active. Supporting load through multi-relay matrix.`;
+                }
+
+                // TRUE DIGITAL TWIN BEHAVIOR: 
+                // The visual fan animation speed is dynamically throttled to match the precise load current consumption
+                if (fanAction) {
+                    const maxSimulatedLoad = 60.0;
+                    // Proportional continuous adjustment scale mapping
+                    fanAction.timeScale = state.loadDemand / maxSimulatedLoad;
+                }
+            }
+
+            // --- Update UI Viewports Matrix ---
+            document.getElementById('ui-solar-power').innerText = `${state.solarPower.toFixed(1)} W`;
+            document.getElementById('ui-solar-details').innerText = `${(state.solarPower > 0 ? 18.2 : 0.0).toFixed(1)}V | ${(state.solarPower / 18.2).toFixed(2)}A`;
+
+            document.getElementById('ui-battery-soc').innerText = `${Math.round(state.batterySoc)}%`;
+            document.getElementById('ui-battery-details').innerText = `${state.batteryVoltage}V | ${state.batteryCurrent >= 0 ? '+' : ''}${state.batteryCurrent}A`;
+            
+            // Adjust Battery Icon styling dynamically based on status
+            const batIcon = document.getElementById('ui-battery-icon');
+            if (state.batterySoc < 25) {
+                batIcon.className = "fa-solid fa-battery-empty text-red-500 text-sm";
+            } else if (state.batterySoc < 60) {
+                batIcon.className = "fa-solid fa-battery-quarter text-amber-400 text-sm";
+            } else {
+                batIcon.className = "fa-solid fa-battery-three-quarters text-emerald-400 text-sm";
+            }
+
+            document.getElementById('ui-load-power').innerText = `${state.loadDemand.toFixed(1)} W`;
+            document.getElementById('ui-load-details').innerText = `12.0V | ${(state.loadDemand / 12.0).toFixed(2)}A`;
+
+            // Update Relay Display DOM Elements
+            updateRelayUI('relay-solar-load', state.relaySolarToLoad);
+            updateRelayUI('relay-battery-load', state.relayBatteryToLoad);
+
+            // Update 3D Speed HUD Element text
+            if (fanAction) {
+                document.getElementById('3d-fan-speed').innerText = `Fan Clip Rotation Speed: ${fanAction.timeScale.toFixed(2)}x`;
+            }
+        }
+
+        function updateRelayUI(id, isActivated) {
+            const el = document.getElementById(id);
+            if (isActivated) {
+                el.innerText = "ACTIVE";
+                el.className = "px-2.5 py-1 rounded font-bold uppercase transition-all duration-300 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)]";
+            } else {
+                el.innerText = "ISOLATED";
+                el.className = "px-2.5 py-1 rounded font-bold uppercase transition-all duration-300 bg-slate-800 text-slate-500 border border-transparent";
+            }
+        }
     </script>
 </body>
 </html>
